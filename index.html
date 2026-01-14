@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos de Pago | Erick Delgado</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6; 
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981; 
+            --danger: #ef4444; 
+            --warning: #f59e0b;
+            --modal-bg: rgba(0, 0, 0, 0.85);
+            --euro-color: #8b5cf6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top, #1e293b, #0f172a);
+            color: var(--text-main);
+            padding: 40px 20px;
+            padding-bottom: 80px;
+            min-height: 100vh;
+        }
+
+        input:focus {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+            outline: none;
+            transform: translateY(-1px);
+        }
+
+        .tasa-input:focus {
+            border-bottom: 2px solid var(--success) !important;
+            box-shadow: 0 10px 20px -10px rgba(16, 185, 129, 0.8) !important;
+            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5));
+        }
+
+        .usdt-editable:focus {
+            box-shadow: 0 5px 15px -5px rgba(52, 211, 153, 0.7);
+            filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.5));
+            border-bottom: 2px solid #34d399;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+            transform: scale(1.01);
+        }
+
+        .btn-copy:hover {
+            background: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            border-color: var(--accent);
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        header { text-align: center; margin-bottom: 40px; }
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .currency-selector {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .currency-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .currency-btn.active { background: var(--accent); color: white; }
+        .currency-btn.active.euro-mode { background: var(--euro-color); }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .data-row:last-child { border-bottom: none; }
+
+        .label { font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+        .value { font-family: 'Roboto Mono', monospace; font-size: 0.95rem; color: var(--text-main); word-break: break-all; }
+        .bank-label { font-weight: 600; color: #cbd5e1; font-size: 0.9rem; }
+
+        .btn-copy, .btn-history {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid transparent;
+            color: var(--text-main);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-copy { width: 36px; height: 36px; flex-shrink: 0; margin-left: 10px; }
+        .btn-copy:active { transform: scale(0.95); background: var(--accent); }
+
+        .btn-history {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: none;
+        }
+
+        .calculator {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+        .calc-inputs { display: flex; gap: 10px; margin-top: 10px; }
+
+        input[type="number"] {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            outline: none;
+            font-family: 'Roboto Mono', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .tasa-input {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px dashed rgba(16, 185, 129, 0.3) !important;
+            color: var(--success) !important;
+            font-size: 2rem !important;
+            font-weight: bold;
+            width: 220px !important;
+            text-align: right;
+            border-radius: 0 !important;
+            padding: 0 !important;
+        }
+
+        .usdt-widget {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(38, 161, 123, 0.1);
+            border: 1px solid rgba(38, 161, 123, 0.3);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .usdt-editable {
+            background: transparent;
+            border: none;
+            border-bottom: 1px dashed #34d399;
+            color: #34d399;
+            font-family: 'Roboto Mono', monospace;
+            font-weight: bold;
+            font-size: 1.3rem;
+            width: 140px;
+            text-align: center;
+        }
+
+        .crypto-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .crypto-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .crypto-row:hover { 
+            background: rgba(15, 23, 42, 0.9);
+            transform: translateX(5px);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .coin-left { display: flex; align-items: center; gap: 12px; }
+        
+        .coin-icon { 
+            width: 38px;
+            height: 38px; 
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .coin-info-text { display: flex; flex-direction: column; }
+        .coin-symbol { font-weight: 700; font-size: 1rem; color: var(--text-main); }
+        .coin-name { font-size: 0.75rem; color: var(--text-muted); }
+        
+        .coin-right { text-align: right; }
+        .coin-price { 
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1rem; 
+            font-weight: 600; 
+            display: block; 
+            color: #fff;
+        }
+        .coin-change { 
+            font-size: 0.75rem;
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-end; 
+            gap: 4px; 
+            margin-top: 2px;
+        }
+        
+        .text-up { color: var(--success); }
+        .text-down { color: var(--danger); }
+        
+        .click-hint {
+            font-size: 0.7rem;
+            color: var(--text-muted); 
+            text-align: center; 
+            margin-top: 15px;
+            opacity: 0.7;
+        }
+
+        #toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: var(--success);
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px;
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        .whatsapp-float {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #25d366;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--modal-bg);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        @media (max-width: 480px) {
+            .tasa-input { font-size: 1.6rem !important; width: 160px !important; }
+            header h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>💳 Datos de Pago</h1>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <p id="nombre-completo" style="color: var(--text-muted); font-weight: 600;">Erick Alexandrys Delgado Ruza</p>
+            <button class="btn-copy" style="width: 28px; height: 28px; font-size: 0.7rem;" onclick="copy('nombre-completo', 'Nombre')">
+                <i class="fa-regular fa-copy"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="grid">
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2><i class="fa-solid fa-calculator"></i> Calculadora</h2>
+            
+            <div class="currency-selector">
+                <button class="currency-btn active" id="btn-usd" onclick="cambiarMoneda('USD')">
+                    <i class="fa-solid fa-dollar-sign"></i> BCV Dólar
+                </button>
+                <button class="currency-btn" id="btn-eur" onclick="cambiarMoneda('EUR')">
+                    <i class="fa-solid fa-euro-sign"></i> BCV Euro
+                </button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px;">
+                <span style="color: var(--text-muted); font-size: 0.9rem;" id="label-tasa">Tasa del Día</span>
+                <div style="display: flex; align-items: baseline; gap: 8px;">
+                    <input type="number" id="tasa-display" class="tasa-input" placeholder="0.00" oninput="guardarTasaManual()">
+                    <span style="font-size: 1rem; color: var(--text-muted)">Bs</span>
+                </div>
+           
+                <span style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;" id="fecha-actualizacion">Sincronizando...</span>
+                
+                <button class="btn-history" onclick="abrirHistorial()">
+                    <i class="fa-solid fa-chart-line"></i> Historial
+                </button>
+            </div>
+            
+            <div class="calculator">
+                <div class="calc-inputs">
+                    <div style="flex: 1">
+                        <label class="label" id="label-moneda-ext">Monto ($)</label>
+                        <input type="number" id="monto-ext" placeholder="10" oninput="calcularDesdeMonedaExt()">
+                    </div>
+                    <div style="flex: 1">
+                        <label class="label">Bolívares (Bs)</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="number" id="bs" placeholder="0.00" oninput="calcularDesdeBolivares()">
+                            <button class="btn-copy" onclick="copy('bs', 'Monto')"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="usdt-widget">
+                <span style="font-size: 0.85rem; color: #a7f3d0; margin-bottom: 4px;">USDT Binance (Valor Aproximado)</span>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <input type="number" id="usdt-display" class="usdt-editable" value="0.00" oninput="guardarUSDTManual()">
+                    <span style="color: #34d399; font-weight: bold;">Bs</span>
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;" id="status-usdt">Cargando...</span>
+            </div>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2 style="margin-bottom: 20px;"><i class="fa-solid fa-chart-pie"></i> Mercado Cripto</h2>
+            <div id="crypto-container" class="crypto-list">
+                <div style="text-align:center; padding: 20px; color: var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Conectando...
+                </div>
+            </div>
+            <div class="click-hint">
+                <i class="fa-regular fa-hand-pointer"></i> Toca una moneda para ver su gráfico
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fa-solid fa-user-shield"></i> Datos Personales</h2>
+            <div class="data-row">
+                <div><span class="label">Cédula</span><span class="value" id="cedula">27022669</span></div>
+                <button class="btn-copy" onclick="copy('cedula', 'Cédula')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="data-row">
+                <div><span class="label">Teléfono</span><span class="value" id="telefono">0412-1688072</span></div>
+                <button class="btn-copy" onclick="copy('telefono', 'Teléfono')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fa-solid fa-mobile-screen-button"></i> Pago Móvil</h2>
+            <div class="data-row">
+                <div><span class="bank-label">VENEZUELA (0102)</span></div>
+                <button class="btn-copy" onclick="copyPagoMovil('0102')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="data-row">
+                <div><span class="bank-label">BANESCO (0134)</span></div>
+                <button class="btn-copy" onclick="copyPagoMovil('0134')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="data-row">
+                <div><span class="bank-label">PROVINCIAL (0108)</span></div>
+                <button class="btn-copy" onclick="copyPagoMovil('0108')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2><i class="fa-solid fa-building-columns"></i> Cuentas Bancarias</h2>
+            <div class="data-row">
+                <div><span class="bank-label">Banco de Venezuela</span><div class="value" id="cuenta-venezuela">01020369420100090279</div></div>
+                <button class="btn-copy" onclick="copy('cuenta-venezuela', 'Cuenta BDV')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="data-row">
+                <div><span class="bank-label">Banesco</span><div class="value" id="cuenta-banesco">01340445344451022707</div></div>
+                <button class="btn-copy" onclick="copy('cuenta-banesco', 'Cuenta Banesco')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="data-row">
+                <div><span class="bank-label">Provincial</span><div class="value" id="cuenta-provincial">01080377260100155835</div></div>
+                <button class="btn-copy" onclick="copy('cuenta-provincial', 'Cuenta Provincial')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fa-brands fa-bitcoin"></i> Binance</h2>
+            <div class="data-row">
+                <div><span class="label">Binance ID</span><span class="value" id="binance-id">252844479</span></div>
+                <button class="btn-copy" onclick="copy('binance-id', 'Binance ID')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="data-row">
+                <div><span class="label">Correo</span><span class="value" id="binance-correo">erickdelgado836@gmail.com</span></div>
+                <button class="btn-copy" onclick="copy('binance-correo', 'Correo Binance')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fa-solid fa-wallet"></i> Zinli</h2>
+            <div class="data-row">
+                <div><span class="label">Correo</span><span class="value" id="zinli-correo">erickdelgado836@gmail.com</span></div>
+                <button class="btn-copy" onclick="copy('zinli-correo', 'Zinli')"><i class="fa-regular fa-copy"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="https://wa.me/584121688072" class="whatsapp-float" target="_blank"><i class="fa-brands fa-whatsapp"></i></a>
+<div id="toast">Copiado</div>
+
+<div class="modal-overlay" id="modalHistorial">
+    <div class="modal-content">
+        <h3 style="text-align:center; margin-bottom:15px;" id="titulo-grafico">Historial BCV</h3>
+        <canvas id="chartDolar"></canvas>
+        <button class="btn-history" style="width:100%; margin-top:15px;" onclick="cerrarHistorial()">Cerrar</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalCrypto">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 id="crypto-modal-title" style="margin:0;">Grafico</h3>
+            <span id="crypto-modal-price" style="font-family:'Roboto Mono'; font-weight:bold; color:var(--accent);"></span>
+        </div>
+        <canvas id="chartCryptoCanvas"></canvas>
+        <button class="btn-history" style="width:100%; margin-top:15px;" onclick="cerrarCryptoModal()">Cerrar</button>
+    </div>
+</div>
+
+<script>
+    // --- Mejoras: fuentes redundantes, timeouts, WebSocket para cripto, y fallback robusto ---
+    let tasas = { 
+        USD: parseFloat(localStorage.getItem('saved_usd')) || 54.00, 
+        EUR: parseFloat(localStorage.getItem('saved_eur')) || 58.00,
+        USDT: parseFloat(localStorage.getItem('saved_usdt')) || 54.00
+    };
+    
+    let monedaActual = 'USD'; 
+    let myChart = null;
+    let cryptoChart = null;
+
+    let lastSourceStamp = { USD: 0, EUR: 0, USDT: 0 };
+    let pollingHandles = { tasas: null, usdt: null, cryptoPoll: null, cryptoWS: null };
+    let useCryptoWS = true; // intentamos WebSocket para Binance (mejor latencia)
+
+    // Helpers
+    const fetchWithTimeout = async (url, opts = {}, timeout = 8000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const res = await fetch(url, { signal: controller.signal, ...opts });
+            clearTimeout(id);
+            return res;
+        } catch (e) {
+            clearTimeout(id);
+            throw e;
+        }
+    };
+    const safeJson = async (res) => {
+        try { return await res.json(); } catch (e) { return null; }
+    };
+
+    // Fuentes priorizadas
+    const fuentes = {
+        pydolarve: { url: "https://pydolarve.org/api/v1/views?page=bcv", parse: (d) => ({ usd: d?.monedas?.usd?.price, eur: d?.monedas?.eur?.price, stamp: d?.updated_at || Date.now() }) },
+        exchangerate_usd: { url: "https://api.exchangerate-api.com/v4/latest/USD", parse: (d) => ({ usd: d?.rates?.VES, eur: null, stamp: d?.time_last_updated ? d.time_last_updated*1000 : Date.now() }) },
+        exchangerate_eur: { url: "https://api.exchangerate-api.com/v4/latest/EUR", parse: (d) => ({ eur: d?.rates?.VES, usd: null, stamp: d?.time_last_updated ? d.time_last_updated*1000 : Date.now() }) },
+        ve_dolarapi_paralelo: { url: "https://ve.dolarapi.com/v1/dolares/paralelo", parse: (d) => ({ usdt: d?.promedio || d?.USD?.promedio, stamp: Date.now() }) },
+    };
+
+    // Actualizador robusto para USD/EUR
+    async function cargarTasasAPI() {
+        const statusEl = document.getElementById("fecha-actualizacion");
+        statusEl.innerText = "Sincronizando...";
+        let updated = false;
+
+        // Intento 1: PyDolarVE (BCV especializado)
+        try {
+            const res = await fetchWithTimeout(fuentes.pydolarve.url, {}, 7000);
+            if (res && res.ok) {
+                const data = await safeJson(res);
+                const parsed = fuentes.pydolarve.parse(data);
+                if (parsed?.usd > 0 || parsed?.eur > 0) {
+                    if (parsed.usd > 0) {
+                        if (parsed.stamp !== lastSourceStamp.USD) {
+                            tasas.USD = parseFloat(parsed.usd);
+                            localStorage.setItem('saved_usd', tasas.USD);
+                            lastSourceStamp.USD = parsed.stamp;
+                            updated = true;
+                        }
+                    }
+                    if (parsed.eur > 0) {
+                        if (parsed.stamp !== lastSourceStamp.EUR) {
+                            tasas.EUR = parseFloat(parsed.eur);
+                            localStorage.setItem('saved_eur', tasas.EUR);
+                            lastSourceStamp.EUR = parsed.stamp;
+                            updated = true;
+                        }
+                    }
+                    statusEl.innerText = "Sincronizado (PyDolarVE): " + new Date().toLocaleTimeString();
+                    if (updated && document.activeElement !== document.getElementById("tasa-display")) actualizarInterfaz();
+                    return;
+                }
+            }
+        } catch (e) { console.warn("PyDolarVE fallo:", e); }
+
+        // Intento 2: ExchangeRate API (global)
+        try {
+            const [resUsd, resEur] = await Promise.all([
+                fetchWithTimeout(fuentes.exchangerate_usd.url, {}, 7000),
+                fetchWithTimeout(fuentes.exchangerate_eur.url, {}, 7000)
+            ]);
+            let parsedUsd = await safeJson(resUsd);
+            let parsedEur = await safeJson(resEur);
+            if (parsedUsd?.rates?.VES) {
+                const stamp = parsedUsd.time_last_updated ? parsedUsd.time_last_updated*1000 : Date.now();
+                if (stamp !== lastSourceStamp.USD) {
+                    tasas.USD = parseFloat(parsedUsd.rates.VES);
+                    localStorage.setItem('saved_usd', tasas.USD);
+                    lastSourceStamp.USD = stamp;
+                    updated = true;
+                }
+            }
+            if (parsedEur?.rates?.VES) {
+                const stamp = parsedEur.time_last_updated ? parsedEur.time_last_updated*1000 : Date.now();
+                if (stamp !== lastSourceStamp.EUR) {
+                    tasas.EUR = parseFloat(parsedEur.rates.VES);
+                    localStorage.setItem('saved_eur', tasas.EUR);
+                    lastSourceStamp.EUR = stamp;
+                    updated = true;
+                }
+            }
+            statusEl.innerText = "Sincronizado (Global): " + new Date().toLocaleTimeString();
+            if (updated && document.activeElement !== document.getElementById("tasa-display")) actualizarInterfaz();
+            return;
+        } catch (e) { console.warn("ExchangeRate fallo:", e); }
+
+        // Intento 3: ve.dolarapi bcv (respaldo)
+        try {
+            const res = await fetchWithTimeout("https://ve.dolarapi.com/v1/dolares/bcv", {}, 7000);
+            if (res && res.ok) {
+                const data = await safeJson(res);
+                const usdVal = data?.USD?.promedio || data?.USD?.promedio_bcv || data?.usd;
+                const eurVal = data?.EUR?.promedio || data?.EUR?.promedio_bcv || data?.eur;
+                const stamp = Date.now();
+                if (usdVal) {
+                    if (stamp !== lastSourceStamp.USD) {
+                        tasas.USD = parseFloat(usdVal);
+                        localStorage.setItem('saved_usd', tasas.USD);
+                        lastSourceStamp.USD = stamp;
+                        updated = true;
+                    }
+                }
+                if (eurVal) {
+                    if (stamp !== lastSourceStamp.EUR) {
+                        tasas.EUR = parseFloat(eurVal);
+                        localStorage.setItem('saved_eur', tasas.EUR);
+                        lastSourceStamp.EUR = stamp;
+                        updated = true;
+                    }
+                }
+                statusEl.innerText = "Sincronizado (DolarAPI BCV): " + new Date().toLocaleTimeString();
+                if (updated && document.activeElement !== document.getElementById("tasa-display")) actualizarInterfaz();
+                return;
+            }
+        } catch (e) { console.warn("ve.dolarapi bcv fallo:", e); }
+
+        // Fallback: modo offline / guardado
+        statusEl.innerText = "Modo Offline (Guardado)";
+        if (document.activeElement !== document.getElementById("tasa-display")) actualizarInterfaz();
+    }
+
+    // Actualizador robusto para USDT (paralelo)
+    async function cargarUSDTBinance() {
+        const statusEl = document.getElementById("status-usdt");
+        statusEl.innerText = "Sincronizando...";
+        let updated = false;
+
+        // Intento 1: ve.dolarapi paralelo
+        try {
+            const res = await fetchWithTimeout(fuentes.ve_dolarapi_paralelo.url, {}, 7000);
+            if (res && res.ok) {
+                const data = await safeJson(res);
+                const val = data?.promedio || data?.USD?.promedio || data?.paralelo;
+                if (val && val > 0) {
+                    const stamp = Date.now();
+                    if (stamp !== lastSourceStamp.USDT) {
+                        tasas.USDT = parseFloat(val);
+                        localStorage.setItem('saved_usdt', tasas.USDT);
+                        lastSourceStamp.USDT = stamp;
+                        updated = true;
+                    }
+                    statusEl.innerText = "Sincronizado (Paralelo): " + new Date().toLocaleTimeString();
+                    if (updated) {
+                        const display = document.getElementById("usdt-display");
+                        if (document.activeElement !== display) display.value = tasas.USDT.toFixed(2);
+                    }
+                    return;
+                }
+            }
+        } catch (e) { console.warn("ve.dolarapi paralelo fallo:", e); }
+
+        // Intento 2: PyDolarVE (si incluye usdt)
+        try {
+            const res = await fetchWithTimeout(fuentes.pydolarve.url, {}, 7000);
+            if (res && res.ok) {
+                const data = await safeJson(res);
+                const val = data?.monedas?.usdt?.price || data?.monedas?.tether?.price;
+                if (val && val > 0) {
+                    const stamp = Date.now();
+                    if (stamp !== lastSourceStamp.USDT) {
+                        tasas.USDT = parseFloat(val);
+                        localStorage.setItem('saved_usdt', tasas.USDT);
+                        lastSourceStamp.USDT = stamp;
+                        updated = true;
+                    }
+                    statusEl.innerText = "Sincronizado (PyDolarVE): " + new Date().toLocaleTimeString();
+                    if (updated) {
+                        const display = document.getElementById("usdt-display");
+                        if (document.activeElement !== display) display.value = tasas.USDT.toFixed(2);
+                    }
+                    return;
+                }
+            }
+        } catch (e) { console.warn("PyDolarVE usdt fallo:", e); }
+
+        // Fallback: estimar con USD BCV
+        try {
+            if (tasas.USD && tasas.USD > 0) {
+                const est = parseFloat(tasas.USD);
+                const stamp = Date.now();
+                if (stamp !== lastSourceStamp.USDT) {
+                    tasas.USDT = est;
+                    localStorage.setItem('saved_usdt', tasas.USDT);
+                    lastSourceStamp.USDT = stamp;
+                }
+                statusEl.innerText = "Estimado (USD BCV)";
+                const display = document.getElementById("usdt-display");
+                if (document.activeElement !== display) display.value = tasas.USDT.toFixed(2);
+                return;
+            }
+        } catch (e) { /* ignore */ }
+
+        statusEl.innerText = "Manual";
+    }
+
+    // Cripto list & render
+    const cryptoList = [
+        { symbol: 'BTCUSDT', name: 'Bitcoin', icon: 'fa-brands fa-bitcoin', color: '#f7931a' },
+        { symbol: 'ETHUSDT', name: 'Ethereum', icon: 'fa-brands fa-ethereum', color: '#627eea' },
+        { symbol: 'BNBUSDT', name: 'BNB', icon: 'fa-solid fa-coins', color: '#f3ba2f' },
+        { symbol: 'XRPUSDT', name: 'XRP', icon: 'fa-solid fa-rocket', color: '#fff' },
+        { symbol: 'SOLUSDT', name: 'Solana', icon: 'fa-solid fa-layer-group', color: '#9945FF' }
+    ];
+
+    function construirHTMLCripto(dataMap) {
+        const container = document.getElementById('crypto-container');
+        let htmlContent = '';
+        cryptoList.forEach(coin => {
+            const d = dataMap[coin.symbol];
+            if (!d) return;
+            const price = d.price;
+            const change = d.change;
+            const isUp = change >= 0;
+            const colorClass = isUp ? 'text-up' : 'text-down';
+            const iconArrow = isUp ? 'fa-caret-up' : 'fa-caret-down';
+            const digits = price < 10 ? 4 : 2;
+            const fmtPrice = price.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+            htmlContent += `
+                <div class="crypto-row" onclick="abrirGraficoCrypto('${coin.symbol}', '${coin.name}', '${coin.color}')">
+                    <div class="coin-left">
+                        <div class="coin-icon" style="color: ${coin.color}"><i class="${coin.icon}"></i></div>
+                        <div class="coin-info-text">
+                            <span class="coin-symbol">${coin.symbol.replace('USDT','')}</span>
+                            <span class="coin-name">${coin.name}</span>
+                        </div>
+                    </div>
+                    <div class="coin-right">
+                        <span class="coin-price">$${fmtPrice}</span>
+                        <span class="coin-change ${colorClass}"><i class="fa-solid ${iconArrow}"></i> ${Math.abs(change).toFixed(2)}%</span>
+                    </div>
+                </div>`;
+        });
+        container.innerHTML = htmlContent;
+    }
+
+    async function cargarPreciosCriptoFallback() {
+        try {
+            const symbols = JSON.stringify(cryptoList.map(c => c.symbol));
+            const response = await fetchWithTimeout(`https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`, {}, 7000);
+            const data = await safeJson(response);
+            const map = {};
+            if (Array.isArray(data)) {
+                data.forEach(t => {
+                    map[t.symbol] = { price: parseFloat(t.lastPrice), change: parseFloat(t.priceChangePercent) };
+                });
+                construirHTMLCripto(map);
+                window.__cryptoMap = map;
+            }
+        } catch (e) { console.warn("REST cripto fallback fallo:", e); }
+    }
+
+    function iniciarCryptoWebSocket() {
+        try {
+            const streams = cryptoList.map(c => c.symbol.toLowerCase() + "@miniTicker").join("/");
+            const url = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+            const ws = new WebSocket(url);
+            ws.onopen = () => { console.info("WS cripto conectado"); };
+            ws.onmessage = (evt) => {
+                try {
+                    const payload = JSON.parse(evt.data);
+                    const data = payload.data;
+                    const symbol = data.s;
+                    const price = parseFloat(data.c || data.C || data.a || 0);
+                    const change = parseFloat(data.P || data.p || 0);
+                    window.__cryptoMap = window.__cryptoMap || {};
+                    window.__cryptoMap[symbol] = { price: price, change: change };
+                    construirHTMLCripto(window.__cryptoMap);
+                } catch (e) { console.warn("WS mensaje parse fallo", e); }
+            };
+            ws.onclose = (e) => {
+                console.warn("WS cripto cerrado, reintentando en 3s", e);
+                if (pollingHandles.cryptoWS) clearTimeout(pollingHandles.cryptoWS);
+                pollingHandles.cryptoWS = setTimeout(() => iniciarCryptoWebSocket(), 3000);
+            };
+            ws.onerror = (err) => {
+                console.error("WS cripto error", err);
+                ws.close();
+            };
+            pollingHandles.wsInstance = ws;
+        } catch (e) { console.warn("No se pudo iniciar WS cripto:", e); }
+    }
+
+    // --- RESTO DE FUNCIONES (CALCULADORA Y UI) ---
+    function cambiarMoneda(moneda) {
+        monedaActual = moneda;
+        document.getElementById('btn-usd').className = `currency-btn ${moneda === 'USD' ? 'active' : ''}`;
+        document.getElementById('btn-eur').className = `currency-btn ${moneda === 'EUR' ? 'active euro-mode' : ''}`;
+        actualizarInterfaz();
+    }
+
+    function actualizarInterfaz() {
+        let tasa = tasas[monedaActual];
+        const display = document.getElementById("tasa-display");
+        if (document.activeElement !== display) display.value = tasa.toFixed(2);
+        document.getElementById("label-tasa").innerText = `Tasa BCV (${monedaActual})`;
+        document.getElementById("label-moneda-ext").innerText = monedaActual === 'USD' ? 'Monto ($)' : 'Monto (€)';
+        calcularDesdeMonedaExt(); 
+        generarGrafico(tasa, monedaActual);
+    }
+
+    async function abrirGraficoCrypto(symbol, name, color) {
+        document.getElementById('modalCrypto').style.display = 'flex';
+        document.getElementById('crypto-modal-title').innerText = name + " (24h)";
+        document.getElementById('crypto-modal-price').innerText = "Cargando...";
+        const ctx = document.getElementById('chartCryptoCanvas').getContext('2d');
+        if (cryptoChart) cryptoChart.destroy();
+        try {
+            const res = await fetchWithTimeout(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=24`, {}, 8000);
+            const rawData = await safeJson(res);
+            if (!rawData) throw new Error("No data");
+            const prices = rawData.map(d => parseFloat(d[4]));
+            const labels = rawData.map(d => { const date = new Date(d[0]); return date.getHours() + ':00'; });
+            document.getElementById('crypto-modal-price').innerText = "$" + prices[prices.length - 1].toLocaleString('en-US');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, 'rgba(30, 41, 59, 0)');
+            cryptoChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ data: prices, borderColor: color, borderWidth: 2, backgroundColor: gradient, fill: true, pointRadius: 2 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.05)' } } } }
+            });
+        } catch (e) { document.getElementById('crypto-modal-price').innerText = "Error"; }
+    }
+
+    function cerrarCryptoModal() { document.getElementById('modalCrypto').style.display = 'none'; }
+    function guardarTasaManual() {
+        const valor = parseFloat(document.getElementById("tasa-display").value);
+        if (!isNaN(valor)) {
+            tasas[monedaActual] = valor;
+            localStorage.setItem('saved_' + monedaActual.toLowerCase(), valor);
+            calcularDesdeMonedaExt();
+        }
+    }
+    function guardarUSDTManual() {
+        const valor = parseFloat(document.getElementById("usdt-display").value);
+        if (!isNaN(valor)) { tasas.USDT = valor; localStorage.setItem('saved_usdt', valor); }
+    }
+    function calcularDesdeMonedaExt() {
+        const cantidad = parseFloat(document.getElementById("monto-ext").value);
+        const tasa = tasas[monedaActual];
+        if (cantidad && tasa) document.getElementById("bs").value = (cantidad * tasa).toFixed(2);
+        else document.getElementById("bs").value = "";
+    }
+    function calcularDesdeBolivares() {
+        const bs = parseFloat(document.getElementById("bs").value);
+        const tasa = tasas[monedaActual];
+        if (bs && tasa) document.getElementById("monto-ext").value = (bs / tasa).toFixed(2);
+        else document.getElementById("monto-ext").value = "";
+    }
+    function copy(id, msg) {
+        const el = document.getElementById(id);
+        const text = el.innerText || el.value;
+        navigator.clipboard.writeText(text);
+        const toast = document.getElementById("toast");
+        toast.innerText = msg + " copiado";
+        toast.className = "show";
+        setTimeout(() => { toast.className = ""; }, 3000);
+    }
+    function copyPagoMovil(bancoCod) {
+        const nombre = document.getElementById('nombre-completo').innerText;
+        const cedula = document.getElementById('cedula').innerText;
+        const tlf = document.getElementById('telefono').innerText.replace(/-/g, ""); 
+        const texto = `${nombre}\n${bancoCod}\n${cedula}\n${tlf}`;
+        navigator.clipboard.writeText(texto);
+        const toast = document.getElementById("toast");
+        toast.innerText = "Datos Pago Móvil copiados";
+        toast.className = "show";
+        setTimeout(() => { toast.className = ""; }, 3000);
+    }
+    function generarGrafico(valor, moneda) {
+        const ctx = document.getElementById('chartDolar').getContext('2d');
+        if (myChart) myChart.destroy();
+        const colorLinea = moneda === 'USD' ? '#3b82f6' : '#8b5cf6';
+        const colorFondo = moneda === 'USD' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)';
+        let dataHist = valor > 0 ? [valor * 0.985, valor * 0.99, valor * 0.992, valor * 0.995, valor] : [];
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: ['Hace 4 días', 'Hace 3 días', 'Anteayer', 'Ayer', 'Hoy'], datasets: [{ label: `Tasa ${moneda}`, data: dataHist, borderColor: colorLinea, tension: 0.4, fill: true, backgroundColor: colorFondo }] },
+            options: { plugins: { legend: { display: false } } }
+        });
+    }
+    function abrirHistorial() { document.getElementById('modalHistorial').style.display = 'flex'; }
+    function cerrarHistorial() { document.getElementById('modalHistorial').style.display = 'none'; }
+    
+    // Inicialización: se usa el mecanismo mejorado y arranca WS o fallback poll
+    async function inicializar() {
+        actualizarInterfaz();
+        document.getElementById("usdt-display").value = tasas.USDT.toFixed(2);
+
+        // Primera sincronización inmediata
+        await cargarTasasAPI();
+        await cargarUSDTBinance();
+
+        // Polling regular con intervalos cortos para detectar cambios pronto
+        if (pollingHandles.tasas) clearInterval(pollingHandles.tasas);
+        pollingHandles.tasas = setInterval(cargarTasasAPI, 15000); // cada 15s (ajustable)
+
+        if (pollingHandles.usdt) clearInterval(pollingHandles.usdt);
+        pollingHandles.usdt = setInterval(cargarUSDTBinance, 20000); // cada 20s (ajustable)
+
+        // Precios cripto: intentar WS; si falla, fallback restful poll
+        if (useCryptoWS) {
+            try {
+                iniciarCryptoWebSocket();
+                // si WS no prende en 5s, comenzamos fallback poll
+                setTimeout(() => {
+                    if (!window.__cryptoMap) {
+                        if (pollingHandles.cryptoPoll) clearInterval(pollingHandles.cryptoPoll);
+                        cargarPreciosCriptoFallback();
+                        pollingHandles.cryptoPoll = setInterval(cargarPreciosCriptoFallback, 4000);
+                    }
+                }, 5000);
+            } catch (e) {
+                cargarPreciosCriptoFallback();
+                pollingHandles.cryptoPoll = setInterval(cargarPreciosCriptoFallback, 4000);
+            }
+        } else {
+            cargarPreciosCriptoFallback();
+            pollingHandles.cryptoPoll = setInterval(cargarPreciosCriptoFallback, 4000);
+        }
+    }
+
+    inicializar();
+</script>
+
+</body>
+</html>

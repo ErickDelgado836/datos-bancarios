@@ -743,8 +743,8 @@
         cryptoList.forEach(coin => {
             const d = dataMap[coin.symbol];
             if (!d) return;
-            const price = d.price;
-            const change = d.change;
+            const price = d.price || 0;
+            const change = (typeof d.change === 'number' && !isNaN(d.change)) ? d.change : 0;
             const isUp = change >= 0;
             const colorClass = isUp ? 'text-up' : 'text-down';
             const iconArrow = isUp ? 'fa-caret-up' : 'fa-caret-down';
@@ -796,7 +796,21 @@
                     const data = payload.data;
                     const symbol = data.s;
                     const price = parseFloat(data.c || data.C || data.a || 0);
-                    const change = parseFloat(data.P || data.p || 0);
+
+                    // --> FIX: calcular % cuando el stream no incluye P/p
+                    let change = NaN;
+                    if (data.P !== undefined && data.P !== null) {
+                        change = parseFloat(data.P);
+                    } else if (data.p !== undefined && data.p !== null) {
+                        change = parseFloat(data.p);
+                    } else if (data.o !== undefined && data.c !== undefined) {
+                        const open = parseFloat(data.o);
+                        if (!isNaN(open) && open !== 0 && !isNaN(price)) {
+                            change = ((price - open) / open) * 100;
+                        }
+                    }
+                    if (isNaN(change)) change = 0;
+
                     window.__cryptoMap = window.__cryptoMap || {};
                     window.__cryptoMap[symbol] = { price: price, change: change };
                     construirHTMLCripto(window.__cryptoMap);
